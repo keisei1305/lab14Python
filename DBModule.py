@@ -118,13 +118,11 @@ class DB:
     def manual_request(self, request):
         return request
 
-
     def add_human(self, first_name, last_name, phone_number, gender):
         entity = (first_name, last_name, phone_number, gender)
         cur = self.cursor.execute('INSERT OR IGNORE INTO Humans(FirstName, LastName, PhoneNumber, Gender)' \
                                   'VALUES (?,?,?,?) returning id', entity)
         id = next(cur)[0]
-        self.con.commit()
         return id
 
     def add_customer(self, first_name, last_name, phone_number, gender, status=None):
@@ -133,7 +131,6 @@ class DB:
         cur = self.cursor.execute('INSERT OR REPLACE INTO Customers(HumanID, Status) VALUES (?, ?)'\
                                   'returning id', entity)
         id = next(cur)[0]
-        self.con.commit()
         return id
 
     def add_executor(self, first_name, last_name, phone_number, gender):
@@ -141,14 +138,12 @@ class DB:
         cur = self.cursor.execute(f"INSERT OR REPLACE INTO Executors(HumanID) VALUES (\"{human_id}\")"\
                                   'returning id')
         id = next(cur)[0]
-        self.con.commit()
         return id
 
     def add_album(self, name, size, id = None):
         cur = self.cursor.execute('INSERT OR REPLACE INTO Albums(Name, Size, id) VALUES (?, ?, ?)'\
                                   'returning id', (name, size, id))
         id = next(cur)[0]
-        self.con.commit()
         return id
 
     def add_media(self, type, size, name, album_id = None, album_name = None):
@@ -160,21 +155,110 @@ class DB:
                  album_name = name
             album_id = self.add_album(album_name, size, album_id)
         cur = self.cursor.execute('INSERT OR REPLACE INTO Media(Type, Size, Name, AlbumID) VALUES(?, ?, ?, ?)'\
-                                  'returning id', (type, name, size, album_id))
+                                  'returning id', (type, size, name, album_id))
         id = next(cur)[0]
-        self.con.commit()
         return id
 
-    def get_album(self, id):
-        cur = self.cursor.execute(f"SELECT * FROM Albums WHERE id = \"{id}\"")
-        album = cur.fetchone()
-        return album
+    def add_report(self, status_work, album_id = None, album_name = None, id = None):
+        album = self.get_album(album_id)
+        cur = None
+        if (album == None):
+            if (album_name == None):
+                album_name = f"album{album_id}"
+            album_id = self.add_album(album_name, 0, album_id)
+        else:
+            album_id = album[0]
+        cur = self.cursor.execute('INSERT OR IGNORE INTO Reports(id, Status, AlbumID) VALUES(?, ?, ?'\
+                                    'returning id', (id, status_work, album_id))
+        id = next(cur)[0]
+        return id
+
+    def add_order(self, customer_id, registration_date, price, report_id = None):
+        if (report_id == None):
+            report_id = self.add_report("Registred")
+        cur = self.cursor.execute('INSERT OR IGNORE INTO Orders(CustomerID, RegistrationDate, Price, ReportID)'\
+                                    'VALUES (?, ?, ?, ?) returning id', (customer_id, registration_date, price, report_id))
+        id = next(cur)[0]
+        return id
+
+    def add_command(self, id, customer_id):
+        cur = self.cursor.execute('INSERT OR REPLACE INTO Commands(id, ExecutorID) VALUES(?,?) returning id', id, customer_id)
+        id = next(cur)[0]
+        return id
+
+    def add_work_type(self, name, id = None):
+        cur = self.cursor.execute('INSERT OR REPLACE INTO Commands(id, Name) VALUES(?,?) returning id', id, name)
+        id = next(cur)[0]
+        return id
+
+    def add_session(self, command_id, type_work_id, order_id, id = None):
+        cur = self.cursor.execute('INSERT OR REPLACE INTO Commands(id, CommandID, TypeWorkID, OrderID)'\
+                                  'VALUES(?, ?, ?, ?) returning id', id, command_id, type_work_id, order_id)
+        id = next(cur)[0]
+        return id
+
 
     def update_album_size(self, id, size):
         self.cursor.execute(f"UPDATE Albums SET size = \"{size}\" where id = \"{id}\"")
+
+    def update_command_executor(self, old_id, new_id):
+        self.cursor.execute(f"UPDATE Commands SET id=\"{new_id}\" where id = \"{old_id}\"")
+
+    def update_status_report(self, id, status_work):
+        self.cursor.execute(f"UPDATE Commands SET StatusWork=\"{status_work}\" where id =\"{id}\"")
+
+    def get_all_media_by_id(self, album_id):
+        cur = self.cursor.execute(f"SELECT * FROM Media WHERE id = \"{album_id}\"")
+        return cur.fetchall()
+
+    def get_all_media_by_type_media(self, type_media):
+        cur = self.cursor.execute(f"SELECT * FROM Media WHERE Type = \"{type_media}\"")
+        return cur.fetchall()
+
+    def get_album(self, album_id):
+        cur = self.cursor.execute(f"SELECT * FROM Albums WHERE id = \"{album_id}\"")
+        return cur.fetchone()
+
+    def get_all_orders_id(self):
+        cur = self.cursor.execute(f"SELECT * FROM Orders")
+        return cur.fetchall()
+
+    def get_all_orders_by_date(self, date):
+        cur = self.cursor.execute(f"SELECT id, CustomerID, ReportID FROM Orders WHERE date = \"{date}\"")
+        return cur.fetchall()
+
+    def get_report_by_order_id(self, order_id):
+        cur = self. cursor.execute(f"SELECT * From Reports WHERE id = \"{order_id}\"")
+        return cur.fetchone()
+
+    def get_all_orders_by_status_work(self, status_work):
+        cur = self.cursor.execute(f"SELECT Orders.id, Reports.StatusWork, Orders.RegistrationDate FROM Reports, Orders "
+                                  f"Where Orders.ReportID = Reports.id and Reports.StatusWork = \"{status_work}\"")
+        return cur.fetchall()
+
+    def get_all_orders_by_customer(self, customer_id):
+        cur = self.cursor.execute(f"SELECT Humans.FirstName, Humans.LastName, Reports.StatusWork, Orders.RegistrationDate, Orders.Price "
+                                  f"FROM Reports, Orders, Customers, Humans "
+                                  f"Where Orders.ReportID = Reports.id "
+                                  f"and Customers.HumanID = Humans.id "
+                                  f"and Orders.CustomerID = \"{customer_id}\" "
+                                  f"and Orders.CustomerID = Customers.id")
+        return cur.fetchall()
+
+    def remove_one_media_from_album(self, media_id):
+        cur = self.cursor.execute(f"SELECT id, Type, Size, Name, AlbumID From Media WHERE id =\"{media_id}\"")
+        media = cur.fetchone()
+        media_size = media[2]
+        album_id = media[4]
+        album_size = self.get_album(album_id)[2]
+        cur = self.cursor.execute(f"DELETE From Media Where id = \"{media_id}\"")
+        self.update_album_size(album_id, album_size - media_size)
+        return media
+
+    def save_changes(self):
         self.con.commit()
 
-    def clear_tables(self):
+    def drop_tables(self):
         self.manual_request("DROP TABLE IF EXISTS Albums;")
         self.manual_request("DROP TABLE IF EXISTS Media;")
         self.manual_request("DROP TABLE IF EXISTS Sessions")
@@ -185,3 +269,15 @@ class DB:
         self.manual_request("DROP TABLE IF EXISTS Reports")
         self.manual_request("DROP TABLE IF EXISTS Customers")
         self.manual_request("DROP TABLE IF EXISTS Humans")
+
+    def clear_tables(self):
+        self.manual_request("DELETE FROM Albums;")
+        self.manual_request("DELETE FROM Media;")
+        self.manual_request("DELETE FROM Sessions")
+        self.manual_request("DELETE FROM WorkTypes")
+        self.manual_request("DELETE FROM Commands")
+        self.manual_request("DELETE FROM Executors")
+        self.manual_request("DELETE FROM Orders")
+        self.manual_request("DELETE FROM Reports")
+        self.manual_request("DELETE FROM Customers")
+        self.manual_request("DELETE FROM Humans")
