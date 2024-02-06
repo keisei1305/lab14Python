@@ -18,10 +18,16 @@ class Generator:
     media_types = ["Фото", "Видео", "Аудио"]
     album_names = ["Лето", "Зима", "Выпускной", "День рождение"]
     cools = ["Круто", "Весело", "Стыдно", "Грустно", "Вот это да"]
+    command_names = ["Ромашка", "Васильки", "Металл", "Музыканты"]
 
     @staticmethod
     def take_random_seed():
         random.seed()
+
+    @staticmethod
+    @get_random
+    def __get_random_command_name():
+        return Generator.command_names
 
     @staticmethod
     @get_random
@@ -80,7 +86,7 @@ class Generator:
 
     @staticmethod
     def __generate_album_name():
-        strings = [random.choice(Generator.album_names), str(random.randint(2000, 2024)), random.choice(Generator.cools)]
+        strings = [random.choice(Generator.album_names), '-', str(random.randint(2000, 2024)), ' ', random.choice(Generator.cools)]
         return ''.join(strings)
 
     @staticmethod
@@ -102,6 +108,8 @@ class Generator:
 
     @staticmethod
     def generate_album(size=0):
+        if size is None:
+            size = random.randint(1, 1000)
         return Generator.__generate_album_name(), size
 
     @staticmethod
@@ -112,13 +120,17 @@ class Generator:
     def generate_media(size=0, album_id=None):
         if size == 0:
             size=random.randint(1, 100)
-        return (Generator.__get_random_media_type, size,
-                Generator.__generate_album_name().join(str(random.randint(1, 100))), album_id)
+        return (Generator.__get_random_media_type(), size,
+                Generator.__generate_album_name()+' '+(str(random.randint(1, 100))), album_id)
 
     @staticmethod
     def generate_sessions(command_id, order_id):
-        return command_id, random.randint(1,2), order_id
+        return command_id, Generator.__get_random_work_type, order_id
 
     @staticmethod
-    def generate_command(mas_of_executors):
+    def generate_executors_in_command(mas_of_executors):
         return random.choices(mas_of_executors, k=random.randint(1, 4))
+
+    @staticmethod
+    def generate_command():
+        return ''.join([Generator.__get_random_command_name(), str(random.randint(1, 100))])

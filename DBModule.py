@@ -10,7 +10,7 @@ class DB:
     def create_tables(self):
         self._create_table_humans()
         self._create_table_customers()
-        self._create_table_work_types()
+        self._create_table_executor_command()
         self._create_table_executors()
         self._create_table_commands()
         self._create_table_albums()
@@ -53,11 +53,12 @@ class DB:
             "UNIQUE(id, HumanID));"
 
     @_add_request_sql
-    def _create_table_work_types(self):
-        return "CREATE TABLE IF NOT EXISTS WorkTypes(id integer PRIMARY KEY AUTOINCREMENT, "\
-            "Name text, "\
-            "UNIQUE(id));"
-
+    def _create_table_executor_command(self):
+        return "CREATE TABLE IF NOT EXISTS ExecutorCommand(ExecutorID integer NOT NULL, "\
+            "CommandID NOT NULL, "\
+            "FOREIGN KEY (CommandID) REFERENCES Commands (id) ON DELETE CASCADE, "\
+            "FOREIGN KEY (ExecutorID) REFERENCES Executors (id) ON DELETE CASCADE, "\
+            "PRIMARY KEY(ExecutorID, CommandID));"
 
     @_add_request_sql
     def _create_table_albums(self):
@@ -98,19 +99,16 @@ class DB:
 
     @_add_request_sql
     def _create_table_commands(self):
-        return "CREATE TABLE IF NOT EXISTS Commands(id integer PRIMARY KEY AUTOINCREMENT, "\
-            "ExecutorID integer NOT NULL, "\
-            "FOREIGN KEY (ExecutorID) REFERENCES Executors (id) ON DELETE CASCADE, "\
-            "UNIQUE(id));"
+        return "CREATE TABLE IF NOT EXISTS Commands(id integer PRIMARY KEY, "\
+            "Name text);"
 
     @_add_request_sql
     def _create_table_sessions(self):
         return "CREATE TABLE IF NOT EXISTS Sessions(id integer PRIMARY KEY AUTOINCREMENT, "\
             "CommandID integer NOT NULL, "\
-            "TypeWorkID integer NOT NULL, "\
+            "TypeWork text NOT NULL, "\
             "OrderID integer NOT NULL, "\
             "FOREIGN KEY (CommandID) REFERENCES Commands (id) ON DELETE CASCADE, " \
-            "FOREIGN KEY (TypeWorkID) REFERENCES TypeWorks (id) ON DELETE CASCADE, " \
             "FOREIGN KEY (OrderID) REFERENCES Orders (id) ON DELETE CASCADE, "\
             "UNIQUE(id));"
 
@@ -159,7 +157,7 @@ class DB:
         id = next(cur)[0]
         return id
 
-    def add_report(self, status_work, album_id = None, album_name = None, id = None):
+    def add_report(self, status_work, album_id=None, album_name=None, id=None):
         album = self.get_album(album_id)
         cur = None
         if (album == None):
@@ -175,37 +173,50 @@ class DB:
 
     def add_order(self, customer_id, registration_date, price, report_id = None):
         if (report_id == None):
-            report_id = self.add_report("Registred")
+            report_id = self.add_report("Запланировано")
         cur = self.cursor.execute('INSERT OR IGNORE INTO Orders(CustomerID, RegistrationDate, Price, ReportID)'\
                                     'VALUES (?, ?, ?, ?) returning id', (customer_id, registration_date, price, report_id))
         id = next(cur)[0]
         return id
 
-    def add_command(self, id, customer_id):
-        cur = self.cursor.execute('INSERT OR REPLACE INTO Commands(id, ExecutorID) VALUES(?,?) returning id', id, customer_id)
+    def add_command(self, name):
+        cur = self.cursor.execute(f'INSERT OR REPLACE INTO Commands(Name) VALUES(\"{name}\") returning id')
         id = next(cur)[0]
         return id
 
-    def add_work_type(self, name, id = None):
-        cur = self.cursor.execute('INSERT OR REPLACE INTO Commands(id, Name) VALUES(?,?) returning id', id, name)
+    def add_session(self, command_id, type_work, order_id, id = None):
+        cur = self.cursor.execute('INSERT OR REPLACE INTO Commands(id, CommandID, TypeWork, OrderID)'\
+                                  'VALUES(?, ?, ?, ?) returning id', id, command_id, type_work, order_id)
         id = next(cur)[0]
         return id
 
-    def add_session(self, command_id, type_work_id, order_id, id = None):
-        cur = self.cursor.execute('INSERT OR REPLACE INTO Commands(id, CommandID, TypeWorkID, OrderID)'\
-                                  'VALUES(?, ?, ?, ?) returning id', id, command_id, type_work_id, order_id)
-        id = next(cur)[0]
-        return id
-
+    def add_executor_command(self, executor_id, command_id):
+        cur = self.cursor.execute('INSERT OR REPLACE INTO ExecutorCommand(ExecutorID, CommandID)'\
+                                  'VALUES(?, ?)', (executor_id, command_id))
 
     def update_album_size(self, id, size):
         self.cursor.execute(f"UPDATE Albums SET size = \"{size}\" where id = \"{id}\"")
 
-    def update_command_executor(self, old_id, new_id):
-        self.cursor.execute(f"UPDATE Commands SET id=\"{new_id}\" where id = \"{old_id}\"")
-
     def update_status_report(self, id, status_work):
         self.cursor.execute(f"UPDATE Commands SET StatusWork=\"{status_work}\" where id =\"{id}\"")
+
+    def get_all_executors_in_command(self, command_id):
+        cur = self.cursor.execute("SELECT Commands.Name, Humans.FirstName, Humans.LastName "\
+                            "FROM ExecutorCommand "\
+                            "JOIN Executors ON Executors.HumanID=ExecutorCommand.ExecutorID "\
+                            "JOIN Humans ON Humans.id=Executors.HumanID "\
+                            "JOIN Commands ON CommandID=Commands.id "\
+                            f"WHERE Commands.id = \"{command_id}\"")
+        return cur.fetchall()
+
+    def get_all_executors(self):
+        cur = self.cursor.execute("SELECT FirstName, LastName, PhoneNumber FROM Executors, Humans Where Executors.HumanID=Humans.id")
+        return cur.fetchall()
+
+    def get_all_id_executors(self):
+        cur = self.cursor.execute("SELECT id FROM Executors")
+        all_id = cur.fetchall()
+        return list(map(sum, all_id))
 
     def get_all_media_by_id(self, album_id):
         cur = self.cursor.execute(f"SELECT * FROM Media WHERE id = \"{album_id}\"")
@@ -261,8 +272,8 @@ class DB:
     def drop_tables(self):
         self.manual_request("DROP TABLE IF EXISTS Albums;")
         self.manual_request("DROP TABLE IF EXISTS Media;")
+        self.manual_request("DROP TABLE IF EXISTS ExecutorCommand")
         self.manual_request("DROP TABLE IF EXISTS Sessions")
-        self.manual_request("DROP TABLE IF EXISTS WorkTypes")
         self.manual_request("DROP TABLE IF EXISTS Commands")
         self.manual_request("DROP TABLE IF EXISTS Executors")
         self.manual_request("DROP TABLE IF EXISTS Orders")
@@ -273,8 +284,8 @@ class DB:
     def clear_tables(self):
         self.manual_request("DELETE FROM Albums;")
         self.manual_request("DELETE FROM Media;")
+        self.manual_request("DELETE FROM ExecutorCommand")
         self.manual_request("DELETE FROM Sessions")
-        self.manual_request("DELETE FROM WorkTypes")
         self.manual_request("DELETE FROM Commands")
         self.manual_request("DELETE FROM Executors")
         self.manual_request("DELETE FROM Orders")
