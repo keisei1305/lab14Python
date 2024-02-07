@@ -67,12 +67,12 @@ class Generator:
     @staticmethod
     def __generate_date():
         year = str(random.randint(2020, 2024))
-        month = random.randint(1, 12)
-        day = random.randint(1, 31)
-        if month < 10:
-            month = '0'.join(str(month))
-        if day < 10:
-            day = '0'.join(str(day))
+        month = str(random.randint(1, 12))
+        day = str(random.randint(1, 31))
+        if len(month) == 1:
+            month = '0'+month
+        if len(day) == 1:
+            day = '0'+day
         dates = [year, '-', month, '-', day]
         return ''.join(dates)
 
@@ -107,6 +107,10 @@ class Generator:
         return customer_id, Generator.__generate_date(), random.randint(500, 3500), report_id
 
     @staticmethod
+    def generate_order_from_customers(mas_of_customers, report_id=None):
+        return Generator.generate_order(random.choice(mas_of_customers), report_id)
+
+    @staticmethod
     def generate_album(size=0):
         if size is None:
             size = random.randint(1, 1000)
@@ -114,7 +118,7 @@ class Generator:
 
     @staticmethod
     def generate_report(album_id=None):
-        return Generator.__get_random_work_status, album_id
+        return Generator.__get_random_work_status(), album_id
 
     @staticmethod
     def generate_media(size=0, album_id=None):
@@ -124,8 +128,8 @@ class Generator:
                 Generator.__generate_album_name()+' '+(str(random.randint(1, 100))), album_id)
 
     @staticmethod
-    def generate_sessions(command_id, order_id):
-        return command_id, Generator.__get_random_work_type, order_id
+    def generate_session(command_id, order_id):
+        return command_id, Generator.__get_random_work_type(), order_id
 
     @staticmethod
     def generate_executors_in_command(mas_of_executors):

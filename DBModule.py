@@ -166,7 +166,7 @@ class DB:
             album_id = self.add_album(album_name, 0, album_id)
         else:
             album_id = album[0]
-        cur = self.cursor.execute('INSERT OR IGNORE INTO Reports(id, Status, AlbumID) VALUES(?, ?, ?'\
+        cur = self.cursor.execute('INSERT OR IGNORE INTO Reports(id, StatusWork, AlbumID) VALUES(?, ?, ?)'\
                                     'returning id', (id, status_work, album_id))
         id = next(cur)[0]
         return id
@@ -185,8 +185,8 @@ class DB:
         return id
 
     def add_session(self, command_id, type_work, order_id, id = None):
-        cur = self.cursor.execute('INSERT OR REPLACE INTO Commands(id, CommandID, TypeWork, OrderID)'\
-                                  'VALUES(?, ?, ?, ?) returning id', id, command_id, type_work, order_id)
+        cur = self.cursor.execute('INSERT OR REPLACE INTO Sessions(id, CommandID, TypeWork, OrderID)'\
+                                  'VALUES(?, ?, ?, ?) returning id', (id, command_id, type_work, order_id))
         id = next(cur)[0]
         return id
 
@@ -203,7 +203,7 @@ class DB:
     def get_all_executors_in_command(self, command_id):
         cur = self.cursor.execute("SELECT Commands.Name, Humans.FirstName, Humans.LastName "\
                             "FROM ExecutorCommand "\
-                            "JOIN Executors ON Executors.HumanID=ExecutorCommand.ExecutorID "\
+                            "JOIN Executors ON Executors.id=ExecutorCommand.ExecutorID "\
                             "JOIN Humans ON Humans.id=Executors.HumanID "\
                             "JOIN Commands ON CommandID=Commands.id "\
                             f"WHERE Commands.id = \"{command_id}\"")
@@ -213,10 +213,30 @@ class DB:
         cur = self.cursor.execute("SELECT FirstName, LastName, PhoneNumber FROM Executors, Humans Where Executors.HumanID=Humans.id")
         return cur.fetchall()
 
+    def get_all_customers(self):
+        cur = self.cursor.execute("SELECT FirstName, LastName, PhoneNumber, Status FROM Customers, Humans Where Customers.HumanID=Humans.id")
+        return cur.fetchall()
+
     def get_all_id_executors(self):
         cur = self.cursor.execute("SELECT id FROM Executors")
         all_id = cur.fetchall()
         return list(map(sum, all_id))
+
+    def get_all_id_customers(self):
+        cur = self.cursor.execute("SELECT id FROM Customers")
+        all_id = cur.fetchall()
+        return list(map(sum, all_id))
+
+    def get_all_id_commands_without_sessions(self):
+        cur = self.cursor.execute("SELECT id FROM Commands "\
+                                  "EXCEPT SELECT Commands.id FROM Commands, Sessions WHERE Commands.id = Sessions.CommandID")
+        all_id = cur.fetchall()
+        return list(map(sum, all_id))
+
+    def get_count_commands_without_sessions(self):
+        cur = self.cursor.execute("SELECT COUNT(*) FROM (SELECT id FROM Commands EXCEPT SELECT COMMANDS.id FROM Commands, Sessions "\
+                                  "WHERE Commands.id = Sessions.CommandID)")
+        return cur.fetchone()[0]
 
     def get_all_media_by_id(self, album_id):
         cur = self.cursor.execute(f"SELECT * FROM Media WHERE id = \"{album_id}\"")
@@ -230,9 +250,10 @@ class DB:
         cur = self.cursor.execute(f"SELECT * FROM Albums WHERE id = \"{album_id}\"")
         return cur.fetchone()
 
-    def get_all_orders_id(self):
-        cur = self.cursor.execute(f"SELECT * FROM Orders")
-        return cur.fetchall()
+    def get_all_id_orders(self):
+        cur = self.cursor.execute(f"SELECT id FROM Orders")
+        all_id = cur.fetchall()
+        return list(map(sum, all_id))
 
     def get_all_orders_by_date(self, date):
         cur = self.cursor.execute(f"SELECT id, CustomerID, ReportID FROM Orders WHERE date = \"{date}\"")
