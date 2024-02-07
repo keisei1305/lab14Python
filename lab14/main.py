@@ -1,6 +1,6 @@
 import random
 import DBModule
-from generator import Generator
+from lab14.generator import Generator
 
 
 def create_customers(count):
@@ -111,6 +111,6 @@ def create_random_database(database):
     append_sessions_to_db(database, random.randint(4, count_available_commands))
 
 
-db = DBModule.DB()
-create_random_database(db)
+db = DBModule.DB('C:\\Users\\admin\\Desktop\\PythonReports\\MyDataBase.db')
+print(db.get_all_executors_in_command(4))
 db.save_changes()

@@ -2,8 +2,8 @@ import sqlite3
 
 
 class DB:
-    def __init__(self):
-        con = sqlite3.connect('MyDataBase.db')
+    def __init__(self, path):
+        con = sqlite3.connect(path)
         self.con = con
         self.cursor = con.cursor()
 
