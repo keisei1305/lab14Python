@@ -277,6 +277,10 @@ class DB:
                                   f"and Orders.CustomerID = Customers.id")
         return cur.fetchall()
 
+    def get_all_rows(self, table_name):
+        cur = self.cursor.execute(f"SELECT * FROM {table_name}")
+        return cur.fetchall()
+
     def remove_one_media_from_album(self, media_id):
         cur = self.cursor.execute(f"SELECT id, Type, Size, Name, AlbumID From Media WHERE id =\"{media_id}\"")
         media = cur.fetchone()
@@ -287,8 +291,25 @@ class DB:
         self.update_album_size(album_id, album_size - media_size)
         return media
 
+    def remove_one_record(self, table_name, id_record):
+        self.cursor.execute(f"DELETE FROM {table_name} Where id = \"{id_record}\"")
+
+    def update_one_record(self, table_name, attribute_name, new_value, id_record):
+        self.cursor.execute(f"UPDATE {table_name} SET {attribute_name} = \"{new_value}\" Where id = \"{id}\"")
+
+    def append_or_insert(self, table_name, record):
+        columns = self.get_columns(table_name)
+        voprosy = ["?"]*len(record)
+        print(columns, record, voprosy)
+        self.cursor.execute(f"INSERT OR REPLACE INTO {table_name} ({','.join(columns)}) VALUES({','.join(voprosy)})", record)
+
     def save_changes(self):
         self.con.commit()
+
+    def get_columns(self, table_name):
+        cur = self.cursor.execute(f"SELECT name FROM PRAGMA_TABLE_INFO(\'{table_name}\')")
+        all_names = cur.fetchall()
+        return list(map(lambda x:x[0], all_names))
 
     def drop_tables(self):
         self.manual_request("DROP TABLE IF EXISTS Albums;")

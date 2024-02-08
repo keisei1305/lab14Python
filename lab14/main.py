@@ -110,7 +110,6 @@ def create_random_database(database):
     count_available_commands = database.get_count_commands_without_sessions()
     append_sessions_to_db(database, random.randint(4, count_available_commands))
 
-
-db = DBModule.DB('C:\\Users\\admin\\Desktop\\PythonReports\\MyDataBase.db')
-print(db.get_all_executors_in_command(4))
+path = 'C:\\Users\\admin\\Desktop\\PythonReports\\MyDataBase.db'
+db = DBModule.DB(path)
 db.save_changes()

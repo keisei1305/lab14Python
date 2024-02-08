@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Обработка данных форм</title>
+</head>
+<body>
+    <form action="cgi-bin/form_handler.py">
+        <select name = "action_name">
+            <option value="Show">Показать таблицу</option>
+            <option value="Update">Обновить таблицу</option>
+            <option value="Remove">Удалить элемент из таблицы</option>
+            <option value="Append">Добавить элемент в табилцу</option>
+        </select>
+        <select name="table_name">
+            <option value="Humans">Humans</option>
+            <option value="Customers">Customers</option>
+            <option value="Executors">Executors</option>
+            <option value="Commands">Commands</option>
+            <option value="Albums">Albums</option>
+            <option value="Media">Media</option>
+            <option value="Reports">Reports</option>
+            <option value="Orders">Orders</option>
+            <option value="ExecutorCommand">ExecutorCommand</option>
+            <option value="Sessions">Sessions</option>
+        </select>
+        <input type="submit" value="Go"/>
+    </form>
+</body>
+</html>
