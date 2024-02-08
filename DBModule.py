@@ -300,8 +300,11 @@ class DB:
     def append_or_insert(self, table_name, record):
         columns = self.get_columns(table_name)
         voprosy = ["?"]*len(record)
-        print(columns, record, voprosy)
         self.cursor.execute(f"INSERT OR REPLACE INTO {table_name} ({','.join(columns)}) VALUES({','.join(voprosy)})", record)
+
+    def get_one_record(self, table_name, id):
+        cur = self.cursor.execute(f"SELECT * FROM '{table_name}' WHERE id = {id}")
+        return cur.fetchone()
 
     def save_changes(self):
         self.con.commit()
